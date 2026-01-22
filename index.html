@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TCP Simulator - Scenarios</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 p-8">
+    <div
+      class="max-w-5xl mx-auto bg-white p-8 rounded-2xl shadow-lg border border-gray-200"
+    >
+      <div
+        class="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-6 mb-8 gap-4"
+      >
+        <div>
+          <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">
+            TCP Tahoe Simulator
+          </h1>
+          <p class="text-gray-500">
+            with Advanced Internet Technologies course conventions
+          </p>
+        </div>
+        <div class="w-full md:w-64">
+          <label class="block text-xs font-bold uppercase text-blue-600 mb-1"
+            >Predefined values</label
+          >
+          <select
+            id="preset"
+            onchange="applyPreset()"
+            class="w-full border-2 border-blue-100 p-2 rounded-lg bg-blue-50 font-semibold outline-none focus:border-blue-400"
+          >
+            <option value="custom">-- Custom Config --</option>
+            <option value="tcp1" selected>TCP exercise 1</option>
+            <option value="tcp2">TCP exercise 2</option>
+            <option value="ex1">Example 1</option>
+            <option value="ex2">Simulated exam 12-01-2025</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1"
+            >PAYLOAD (KB)</label
+          >
+          <input
+            id="payload"
+            type="number"
+            value="20"
+            class="w-full border-2 border-gray-200 p-2 rounded-lg focus:border-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1"
+            >MSS (Bytes)</label
+          >
+          <input
+            id="mss"
+            type="number"
+            value="750"
+            class="w-full border-2 border-gray-200 p-2 rounded-lg focus:border-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1"
+            >SPEED (Mbps)</label
+          >
+          <input
+            id="speed"
+            type="number"
+            value="50"
+            class="w-full border-2 border-gray-200 p-2 rounded-lg focus:border-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1"
+            >RTT (ms)</label
+          >
+          <input
+            id="rtt"
+            type="number"
+            value="20"
+            class="w-full border-2 border-gray-200 p-2 rounded-lg focus:border-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1"
+            >RX WIN (PDUs)</label
+          >
+          <input
+            id="rx_win_pdu"
+            type="number"
+            value="100"
+            class="w-full border-2 border-gray-200 p-2 rounded-lg focus:border-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1"
+            >SSHTRESH (PDUs)</label
+          >
+          <input
+            id="sshtresh"
+            type="number"
+            value="8"
+            class="w-full border-2 border-gray-200 p-2 rounded-lg focus:border-blue-500 outline-none"
+          />
+        </div>
+      </div>
+
+      <button
+        onclick="runSimulation()"
+        class="w-full bg-blue-600 text-white font-bold px-10 py-4 rounded-xl hover:bg-blue-700 transform active:scale-95 transition shadow-lg text-lg"
+      >
+        Start transmission
+      </button>
+
+      <div class="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div
+          class="lg:col-span-2 bg-gray-50 p-6 rounded-2xl border border-gray-100 shadow-inner"
+        >
+          <canvas id="tcpChart"></canvas>
+        </div>
+
+        <div id="results" class="hidden flex flex-col space-y-4">
+          <div
+            class="bg-gradient-to-br from-blue-600 to-blue-800 p-5 rounded-2xl shadow-md"
+          >
+            <span
+              class="text-blue-100 text-xs font-bold uppercase tracking-wider"
+              >Total Time</span
+            >
+            <p id="finalTime" class="text-4xl font-black text-white"></p>
+          </div>
+          <div
+            class="bg-gray-900 p-5 rounded-2xl shadow-2xl flex-grow flex flex-col"
+          >
+            <span
+              class="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2"
+              >Transmission Log</span
+            >
+            <div
+              id="log"
+              class="text-[11px] font-mono overflow-y-auto h-72 text-green-400 leading-relaxed scrollbar-thin"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="mt-12 mb-8 py-6 border-t border-gray-200 text-center">
+      <p class="text-gray-400 text-[9px] mt-2">Marco Bidoli - 2026</p>
+    </footer>
+
+    <script>
+      let myChart = null;
+
+      const presets = {
+        ex1: {
+          payload: 20,
+          mss: 750,
+          speed: 50,
+          rtt: 20,
+          rx_win: 10,
+          sshtresh: 8,
+        },
+        ex2: {
+          payload: 1000,
+          mss: 750,
+          speed: 1,
+          rtt: 40,
+          rx_win: 10,
+          sshtresh: 8,
+        },
+        tcp1: {
+          payload: 1000,
+          mss: 1500,
+          speed: 10,
+          rtt: 20,
+          rx_win: 20,
+          sshtresh: 8,
+        },
+        tcp2: {
+          payload: 15000,
+          mss: 1500,
+          speed: 100,
+          rtt: 4,
+          rx_win: 10,
+          sshtresh: 8,
+        },
+      };
+
+      function applyPreset() {
+        const selected = document.getElementById("preset").value;
+        if (selected === "custom") return;
+
+        const p = presets[selected];
+        document.getElementById("payload").value = p.payload;
+        document.getElementById("mss").value = p.mss;
+        document.getElementById("speed").value = p.speed;
+        document.getElementById("rtt").value = p.rtt;
+        document.getElementById("rx_win_pdu").value = p.rx_win;
+        document.getElementById("sshtresh").value = p.sshtresh;
+        runSimulation();
+      }
+
+      function runSimulation() {
+        const K = 1000;
+        const mss = parseInt(document.getElementById("mss").value);
+        const speed = parseFloat(document.getElementById("speed").value);
+        const payload = parseFloat(document.getElementById("payload").value);
+        const rtt = parseFloat(document.getElementById("rtt").value);
+        const sshtresh = parseInt(document.getElementById("sshtresh").value);
+        const rx_win_limit = parseInt(
+          document.getElementById("rx_win_pdu").value,
+        );
+
+        const computeTxTime = (size, spd) =>
+          ((size * 8) / (spd * Math.pow(10, 6))) * 1000;
+        const t_tx = computeTxTime(mss, speed);
+        const n_ct = Math.ceil(rtt / t_tx + 1);
+
+        let full_PDUs_to_send = Math.floor((payload * K) / mss);
+        let partial_PDU_size = (payload * K) % mss;
+
+        let c_win = 1;
+        let cycle = 1;
+        let tx_tot_time = rtt;
+        let slow_start = true;
+        let cycles_data = [];
+        let c_win_data = [];
+        let logHTML = `<span class="text-yellow-400">--- Simulation Start ---</span><br>`;
+        logHTML += `N_ct (continuous transmission): ${n_ct} PDUs<br>`;
+        logHTML += `T_tx (per PDU): ${t_tx.toFixed(4)} ms<br><br>`;
+
+        while (full_PDUs_to_send > 0 || partial_PDU_size > 0) {
+          cycles_data.push(cycle);
+          c_win_data.push(c_win);
+          let current_c_win = c_win;
+
+          // Continuous Transmission
+          if (c_win >= n_ct) {
+            const burst_time = full_PDUs_to_send * t_tx;
+            const partial_time =
+              partial_PDU_size > 0 ? computeTxTime(partial_PDU_size, speed) : 0;
+
+            logHTML += `<br><span class="text-yellow">CONT. TRANSMISSION REACHED</span><br>`;
+            logHTML += `Burst: ${full_PDUs_to_send} PDUs * ${t_tx.toFixed(4)}ms = ${burst_time.toFixed(2)}ms<br>`;
+            if (partial_PDU_size > 0) {
+              logHTML += `Partial: ${partial_PDU_size}B = ${partial_time.toFixed(2)}ms<br>`;
+            }
+
+            tx_tot_time += burst_time + partial_time;
+            full_PDUs_to_send = 0;
+            partial_PDU_size = 0;
+            break;
+          }
+
+          // Send a window
+          let pdus_in_window = Math.min(c_win, full_PDUs_to_send);
+          if (full_PDUs_to_send > 0) {
+            full_PDUs_to_send -= pdus_in_window;
+            if (full_PDUs_to_send === 0 && partial_PDU_size === 0) {
+              tx_tot_time += pdus_in_window * t_tx;
+            } else {
+              tx_tot_time += t_tx + rtt;
+            }
+          } else if (partial_PDU_size > 0) {
+            tx_tot_time += computeTxTime(partial_PDU_size, speed);
+            partial_PDU_size = 0;
+          }
+
+          // Tahoe new c_win
+          if (slow_start) {
+            c_win = Math.min(c_win * 2, rx_win_limit);
+            if (c_win >= sshtresh) slow_start = false;
+          } else {
+            c_win = Math.min(c_win + 1, rx_win_limit);
+          }
+
+          logHTML += `Cycle ${cycle.toString().padStart(2, "0")} | Win: ${current_c_win.toString().padStart(3, " ")} | Time: ${tx_tot_time.toFixed(2)}ms<br>`;
+          cycle++;
+        }
+
+        document.getElementById("results").classList.remove("hidden");
+        document.getElementById("finalTime").innerText =
+          `${tx_tot_time.toFixed(2)} ms`;
+        document.getElementById("log").innerHTML = logHTML;
+
+        updateChart(cycles_data, c_win_data, n_ct, sshtresh, rx_win_limit);
+      }
+
+      function updateChart(labels, data, n_ct, sshtresh, rx_win) {
+        const ctx = document.getElementById("tcpChart").getContext("2d");
+        if (myChart) myChart.destroy();
+
+        const maxWinReached = Math.max(...data);
+
+        const datasets = [
+          {
+            label: "Window Size",
+            data: data,
+            borderColor: "#2563eb",
+            backgroundColor: "rgba(37, 99, 235, 0.1)",
+            fill: true,
+            tension: 0.3,
+          },
+          {
+            label: "SSHTresh",
+            data: Array(labels.length).fill(sshtresh),
+            borderColor: "#10b981",
+            borderDash: [2, 2],
+            pointRadius: 0,
+          },
+        ];
+
+        // saturation line only if it was actually hit or crossed
+        if (maxWinReached >= n_ct) {
+          datasets.push({
+            label: "Continuous transmission (N_ct)",
+            data: Array(labels.length).fill(n_ct),
+            borderColor: "#f59e0b",
+            borderDash: [5, 5],
+            pointRadius: 0,
+          });
+        }
+
+        myChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: datasets,
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: "bottom" } },
+          },
+        });
+      }
+
+      window.onload = runSimulation;
+    </script>
+  </body>
+</html>
